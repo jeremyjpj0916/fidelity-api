@@ -218,6 +218,10 @@ class FidelityAutomation:
         """
         Logs into fidelity using the supplied username and password.
 
+        Highly encouraged to use TOTP Secrets and to not save the device during login.
+        Not saving the device allows other functions like open_account and enable_pennystock_trading
+        to work reliably.
+
         Parameters
         ----------
         username (str)
@@ -471,14 +475,26 @@ class FidelityAutomation:
             # If the value isn't present, move to next row
             if len(val) == 0:
                 continue
-            if val.lower() == "n/a":
-                val = 0
             # If the last price isn't available, just use the current value
             if len(last_price) == 0:
                 last_price = val
             # If the quantity is missing set it to 1 (For SPAXX or any other cash position)
             if len(quantity) == 0:
                 quantity = 1
+            
+            # Check for anything that isn't a number 
+            try:
+                float(val)
+            except ValueError:
+                val = 0
+            try:
+                float(last_price)
+            except ValueError:
+                last_price = 0
+            try:
+                float(quantity)
+            except ValueError:
+                quantity = 0
 
             # Create list of dictionary for stock found
             stock_list = [create_stock_dict(ticker, float(quantity), float(last_price), float(val))]
@@ -728,6 +744,10 @@ class FidelityAutomation:
         Opens either a brokerage or roth account. If a roth account is opened, the new account number is stored in
         `self.new_account_number`
 
+        `NOTE` Use login(save_device=False) when logging in.
+        If you do not authenticate with 2FA when creating this session and the device is remembered from a pervious
+        login, fidelity can attempt to authenticate again which causes this function to fail.
+
         Parameters
         ----------
         type (str)
@@ -781,7 +801,7 @@ class FidelityAutomation:
 
                 ## Getting the account number ##
                 # Get new list of accounts
-                new_acc_dict = self.get_list_of_accounts(set=False)
+                new_acc_dict = self.get_list_of_accounts(set_flag=False)
                 # Reset new account number in case this was set before
                 self.new_account_number = None
                 # Compare old and new list
@@ -892,6 +912,10 @@ class FidelityAutomation:
         """
         Enables penny stock trading for the account given.
         The account is just the account number, no nickname and no parenthesis
+
+        `NOTE` Use login(save_device=False) when logging in.
+        If you do not authenticate with 2FA when creating this session and the device is remembered from a pervious
+        login, fidelity can attempt to authenticate again which causes this function to fail.
 
         Problems
         --------
