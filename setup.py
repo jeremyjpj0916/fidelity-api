@@ -14,5 +14,5 @@ setup(
     url="https://github.com/kennyboy106/fidelity-api",
     keywords=["FIDELITY", "API"],
     install_requires=["playwright", "playwright-stealth", "pyotp"],
-    packages=["fidelity_api"],
+    packages=["fidelity"],
 )
