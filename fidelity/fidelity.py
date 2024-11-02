@@ -122,15 +122,18 @@ class FidelityAutomation:
         # Apply stealth settings
         stealth_sync(self.page, self.stealth_config)
 
-    def get_list_of_accounts(self, set_flag: bool = True):
+    def get_list_of_accounts(self, set_flag: bool = True, get_withdrawal_bal: bool = False):
         """
         Uses the transfers page's dropdown to obtain the list of accounts.
-        Separates the account number and nickname and places them into `self.account_dict` if not already present
+        Separates the account number and nickname and places them into `self.account_dict`
+        if not already present
 
         Parameters
         ----------
         set_flag (bool) = True
-            If set_flag is false, `self.account_dict` will not be updated and a dictionary of account numbers will be returned instead
+            If set_flag is false, `self.account_dict` will not be updated
+        get_withdrawal_bal (bool) = False
+            If set to true, the function will provide the available balance that can be withdrawn from the account
 
         Post conditions
         ---------------
@@ -139,7 +142,8 @@ class FidelityAutomation:
         Returns
         -------
         account_dict
-            If set_flag is False, returns the dictionary instead of setting self.account_dict
+            A dictionary of the account information using account numbers as keys. See set_account_dict
+            for more info on how to use this dictionary.
         """
         try:
             # Go to the transfers page
@@ -152,6 +156,7 @@ class FidelityAutomation:
             options = from_select.locator("option").all()
 
             local_dict = {}
+            # Get account number and nickname
             for option in options:
                 # Try to find accounts by using a regular expression
                 # This regex matches a string of numbers starting with a Z or a digit that
@@ -159,25 +164,51 @@ class FidelityAutomation:
                 # Z or first digit.
                 account_number = re.search(r'(?<=\()(Z|\d)\d{6,}(?=\))', option.inner_text())
                 nickname = re.search(r'^.+?(?=\()', option.inner_text())
+                with_bal = None
+
+                # Get withdrawal balance once we find a valid account
+                if get_withdrawal_bal and account_number and nickname:
+                    # Select the account in the dropdown
+                    acc_drpdwn_value = option.get_attribute("value")
+                    from_select.select_option(acc_drpdwn_value)
+                    # Wait for balance info to update. This is very fast but there is a delay
+                    self.page.wait_for_timeout(100)
+                    # Find the balance
+                    with_bal = self.page.locator("tr.pvd-table__row:nth-child(2) > td:nth-child(2)").inner_text()
+                    with_bal = float(with_bal.replace("$", "").replace(",", ""))
 
                 # Add to the account dict
                 if set_flag and account_number and nickname:
-                    self.set_account_dict(
+                    # Create entry if not already there
+                    if not self.set_account_dict(
                         account_num=account_number.group(0),
-                        nickname=nickname.group(0)
-                    )
+                        nickname=nickname.group(0),
+                        withdrawal_balance=with_bal if with_bal is not None else 0.0
+                    ):
+                        # If entry exists, overwrite withdrawal balance
+                        self.add_withdrawal_bal_to_account_dict(
+                            account_num=account_number.group(0),
+                            withdrawal_balance=with_bal if with_bal is not None else 0.0,
+                            overwrite=True
+                        )
+                        # Same with nickname
+                        self.add_nickname_to_account_dict(
+                            account_num=account_number.group(0),
+                            nickname=nickname.group(0),
+                            overwrite=True
+                        )
                 # Or to local copy
                 elif not set_flag and account_number and nickname:
                     local_dict[account_number.group(0)] = {
                         "balance": 0.0,
+                        "withdrawal_balance": with_bal if with_bal is not None else 0.0,
                         "nickname": nickname.group(0),
                         "stocks": []
                     }
-
             if not set_flag:
                 return local_dict
             
-            return None
+            return self.account_dict
 
         except Exception as e:
             print(f"An error occurred in get_list_of_accounts: {str(e)}")
@@ -329,9 +360,19 @@ class FidelityAutomation:
 
         return self.account_dict
 
-    def set_account_dict(self, account_num: str, balance: float = None, nickname: str = None, stocks: list = None, overwrite: bool = False):
+    def set_account_dict(self, account_num: str, balance: float = None, withdrawal_balance: float = None, nickname: str = None, stocks: list = None, overwrite: bool = False):
         """
         Create or rewrite (if overwrite=True) an entry in the account_dict.
+        The dictionary is keyed with account numbers such that:
+        ```
+        account_dict["12345678"] = 
+        {
+            "balance": balance if balance is not None else 0.0,
+            "withdrawal_balance": withdrawal_balance if withdrawal_balance is not None else 0.0,
+            "nickname": nickname,
+            "stocks": stocks if stocks is not None else []
+        }
+        ```
 
         Parameters
         ----------
@@ -339,6 +380,8 @@ class FidelityAutomation:
             The account number of a Fidelity account with no parenthesis. Ex: Z12345678
         balance (float)
             The balance of the account if present.
+        withdrawal_balance (float)
+            The available balance that can be withdrawn from the account as cash
         nickname (str)
             The nickname of the account. Ex: Individual
         stocks (list)
@@ -371,6 +414,7 @@ class FidelityAutomation:
             # Use the info given
             self.account_dict[account_num] = {
                 "balance": balance if balance is not None else 0.0,
+                "withdrawal_balance": withdrawal_balance if withdrawal_balance is not None else 0.0,
                 "nickname": nickname,
                 "stocks": stocks if stocks is not None else []
             }
@@ -378,7 +422,7 @@ class FidelityAutomation:
         
         return False
 
-    def add_stock_to_account_dict(self, account_num: str, stock: dict):
+    def add_stock_to_account_dict(self, account_num: str, stock: dict, overwrite: bool = False):
         """
         Add a stock to the account dict under an account.
         You can use/import `create_stock_dict` for help.
@@ -390,9 +434,51 @@ class FidelityAutomation:
         False
             If account doesn't yet exist in account_dict
         """
+        if not validate_stocks([stock]):
+            return False
         if account_num in self.account_dict:
-            self.account_dict[account_num]["stocks"].append(stock)
-            self.account_dict[account_num]["balance"] += stock["value"]
+            if overwrite:
+                self.account_dict[account_num]["stocks"] = [stock]
+                self.account_dict[account_num]["balance"] = stock["value"]
+            else:
+                self.account_dict[account_num]["stocks"].append(stock)
+                self.account_dict[account_num]["balance"] += stock["value"]
+            return True
+        return False
+
+    def add_withdrawal_bal_to_account_dict(self, account_num: str, withdrawal_balance: float, overwrite: bool = False):
+        """
+        Add the cash available to withdrawal to the account_dict if it is 0 or overwriting
+
+        Returns
+        -------
+        True
+            If successful
+        False
+            If account doesn't yet exist in account_dict
+        """
+        if (account_num in self.account_dict and
+           (overwrite or self.account_dict["withdrawal_balance"] == 0.0)
+        ):
+            self.account_dict[account_num]["withdrawal_balance"] = withdrawal_balance
+            return True
+        return False
+
+    def add_nickname_to_account_dict(self, account_num: str, nickname: str, overwrite: bool = False):
+        """
+        Add the nickname to the account_dict if it is not set or overwriting
+
+        Returns
+        -------
+        True
+            If successful
+        False
+            If account doesn't yet exist in account_dict
+        """
+        if (account_num in self.account_dict and
+           (overwrite or self.account_dict["nickname"] is None)
+        ):
+            self.account_dict[account_num]["nickname"] = nickname
             return True
         return False
 
