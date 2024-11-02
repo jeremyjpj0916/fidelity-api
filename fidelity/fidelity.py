@@ -511,6 +511,9 @@ class FidelityAutomation:
         """
         Logs into fidelity using the supplied username and password.
 
+        If totp_secret is missing, the function will use sms code and login_2FA must be called with
+        the code to complete the login
+
         Highly encouraged to use TOTP Secrets and to not save the device during login.
         Not saving the device allows other functions like open_account and enable_pennystock_trading
         to work reliably.
