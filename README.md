@@ -11,7 +11,7 @@ gather account positions, nickname accounts, etc.
 Supports 2FA!
 
 ## Disclaimer
-I am not a financial advisor and not affiliated with Chase in any way. Use this tool at your own risk. I am 
+I am not a financial advisor and not affiliated with Fidelity in any way. Use this tool at your own risk. I am 
 not responsible for any losses or damages you may incur by using this project. This tool is provided as-is 
 with no warranty.
 
