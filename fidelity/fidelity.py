@@ -12,9 +12,6 @@ from playwright_stealth import StealthConfig, stealth_sync
 import csv
 from enum import Enum
 
-# TODO List
-    # Allow penny stock trading function to detect when all accounts are already enabled
-
 # Needed for the download_prev_statement function
 class fid_months(Enum):
     """
@@ -1122,6 +1119,13 @@ class FidelityAutomation:
             self.page.get_by_role("button", name="Start").click(timeout=15000)
             self.wait_for_loading_sign()
 
+            # See if we can enable any accounts
+            try:
+                self.page.get_by_text("This feature is already enabled").wait_for(state="visible", timeout=1000)
+                print("All accounts have penny stock trading enabled already")
+                return True
+            except PlaywrightTimeoutError:
+                pass
             # Ensure the page is loaded
             select_account_title = self.page.get_by_role("heading", name="Select an account")
             select_account_title.wait_for(timeout=30000, state="visible")
