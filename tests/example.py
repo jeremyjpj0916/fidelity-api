@@ -30,3 +30,5 @@ else:
 acc_dict = browser.get_list_of_accounts(set_flag=True, get_withdrawal_bal=True)
 for account in acc_dict:
     print(f"{acc_dict[account]['nickname']}:  {account}: {acc_dict[account]['withdrawal_balance']}")
+
+browser.close_browser()
