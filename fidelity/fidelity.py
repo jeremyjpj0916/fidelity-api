@@ -13,7 +13,6 @@ import csv
 from enum import Enum
 
 # TODO List
-    # Implement debug functionality with screenshots
     # Allow penny stock trading function to detect when all accounts are already enabled
 
 # Needed for the download_prev_statement function
@@ -65,6 +64,7 @@ class FidelityAutomation:
         self.headless: bool = headless
         self.title: str = title
         self.save_state: bool = save_state
+        self.debug = debug
         self.profile_path: str = profile_path
         self.stealth_config = StealthConfig(
             navigator_languages=False,
@@ -73,7 +73,6 @@ class FidelityAutomation:
         )
         self.getDriver()
         # Some class variables
-        self.debug = debug
         self.account_dict: dict = {}
         self.source_account = source_account
         self.new_account_number = None
@@ -118,6 +117,11 @@ class FidelityAutomation:
         self.context = self.browser.new_context(
             storage_state=self.profile_path if self.title is not None else None
         )
+
+        # Take screenshots on actions
+        if self.debug:
+            self.context.tracing.start(name="fidelity_trace", screenshots=True, snapshots=True)
+
         self.page = self.context.new_page()
         # Apply stealth settings
         stealth_sync(self.page, self.stealth_config)
@@ -501,6 +505,9 @@ class FidelityAutomation:
         """
         # Save cookies
         self.save_storage_state()
+        # Save screenshots if debugging
+        if self.debug:
+            self.context.tracing.stop(path=f'./fidelity_trace{self.title if self.title is not None else ""}.zip')
         # Close context before browser as directed by documentation
         self.context.close()
         self.browser.close()
