@@ -15,6 +15,11 @@ I am not a financial advisor and not affiliated with Chase in any way. Use this 
 not responsible for any losses or damages you may incur by using this project. This tool is provided as-is 
 with no warranty.
 
+## Donations
+If you feel this project has saved you time or provided value to you, you can send me a donation using the badge below!
+
+[![ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white
+)](https://ko-fi.com/kenny18067)
 
 <!-- GETTING STARTED -->
 ## Getting Started
