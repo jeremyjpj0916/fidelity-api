@@ -1057,6 +1057,7 @@ class FidelityAutomation:
             available_balance = float(available_balance.replace("$", "").replace(",", ""))
 
             # Check if there's enough balance
+            transfer_amount = round(transfer_amount, 2)
             if transfer_amount > available_balance:
                 print(f"Insufficient funds. Available: ${available_balance}, Attempted transfer: ${transfer_amount}")
                 return False
