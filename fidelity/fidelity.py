@@ -1292,6 +1292,7 @@ class FidelityAutomation:
 
             # Click it
             selected_entry.click()
+            self.page.wait_for_timeout(50)
 
             # Click the rename button
             self.page.get_by_role("button", name="Rename").click()
