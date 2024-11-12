@@ -264,102 +264,123 @@ class FidelityAutomation:
             }
             ```
         """
-        # Go to positions page
-        self.page.wait_for_load_state(state="load")
-        self.page.goto("https://digital.fidelity.com/ftgw/digital/portfolio/positions")
-        self.wait_for_loading_sign()
+        try:
+            # Go to positions page
+            self.page.wait_for_load_state(state="load")
+            self.page.goto("https://digital.fidelity.com/ftgw/digital/portfolio/positions")
+            self.wait_for_loading_sign()
+            self.page.wait_for_timeout(200)
+            self.wait_for_loading_sign()
 
-        # Download the positions as a csv
-        with self.page.expect_download() as download_info:
-            self.page.get_by_label("Download Positions").click()
-        download = download_info.value
-        cur = os.getcwd()
-        positions_csv = os.path.join(cur, download.suggested_filename)
-        # Create a copy to work on with the proper file name known
-        download.save_as(positions_csv)
-
-        csv_file = open(positions_csv, newline="", encoding="utf-8-sig")
-
-        reader = csv.DictReader(csv_file)
-        # Ensure all fields we want are present
-        required_elements = [
-            "Account Number",
-            "Account Name",
-            "Symbol",
-            "Description",
-            "Quantity",
-            "Last Price",
-            "Current Value",
-        ]
-        intersection_set = set(reader.fieldnames).intersection(set(required_elements))
-        if len(intersection_set) != len(required_elements):
-            raise Exception("Not enough elements in fidelity positions csv")
-
-        for row in reader:
-            # Skip empty rows
-            if row["Account Number"] is None:
-                continue
-            # Last couple of rows have some disclaimers, filter those out
-            if "and" in row["Account Number"]:
-                break
-            # Skip accounts that start with 'Y' (Fidelity managed)
-            if row["Account Number"][0] == "Y":
-                continue
-            # Get the value and remove '$' from it
-            val = str(row["Current Value"]).replace("$", "").replace("-", "")
-            # Get the last price
-            last_price = str(row["Last Price"]).replace("$", "").replace("-", "")
-            # Get quantity
-            quantity = str(row["Quantity"]).replace("-", "")
-            # Get ticker
-            ticker = str(row["Symbol"])
-
-            # Don't include this if present
-            if "Pending" in ticker:
-                continue
-            # If the value isn't present, move to next row
-            if len(val) == 0:
-                continue
-            # If the last price isn't available, just use the current value
-            if len(last_price) == 0:
-                last_price = val
-            # If the quantity is missing set it to 1 (For SPAXX or any other cash position)
-            if len(quantity) == 0:
-                quantity = 1
-            
-            # Check for anything that isn't a number 
+            # Download the positions as a csv #
+            # See if new UI is present
+            new_ui = True
             try:
-                float(val)
-            except ValueError:
-                val = 0
-            try:
-                float(last_price)
-            except ValueError:
-                last_price = 0
-            try:
-                float(quantity)
-            except ValueError:
-                quantity = 0
+                self.page.get_by_role("button", name="Available Actions").click(timeout=5000)
+                with self.page.expect_download() as download_info:
+                    self.page.get_by_role("menuitem", name="Download").click()
+                download = download_info.value
+            except PlaywrightTimeoutError:
+                new_ui = False
+            if not new_ui:
+                try:
+                    # Use the old UI
+                    with self.page.expect_download() as download_info:
+                        self.page.get_by_label("Download Positions").click()
+                    download = download_info.value
+                except PlaywrightTimeoutError:
+                    return None
+            # Get absolute path to file
+            cur = os.getcwd()
+            positions_csv = os.path.join(cur, download.suggested_filename)
+            # Create a copy to work on with the proper file name known
+            download.save_as(positions_csv)
 
-            # Create list of dictionary for stock found
-            stock_list = [create_stock_dict(ticker, float(quantity), float(last_price), float(val))]
-            # Try setting in the account dict without overwrite
-            if not self.set_account_dict(
-                account_num=row["Account Number"],
-                balance=float(val),
-                nickname=row["Account Name"],
-                stocks=stock_list,
-                overwrite=False,
-            ):
-                # If the account exists already, add to it
-                self.add_stock_to_account_dict(row["Account Number"], stock_list[0])
+            csv_file = open(positions_csv, newline="", encoding="utf-8-sig")
 
-        # Close the file
-        csv_file.close()
-        # Delete the file
-        os.remove(positions_csv)
+            reader = csv.DictReader(csv_file)
+            # Ensure all fields we want are present
+            required_elements = [
+                "Account Number",
+                "Account Name",
+                "Symbol",
+                "Description",
+                "Quantity",
+                "Last Price",
+                "Current Value",
+            ]
+            intersection_set = set(reader.fieldnames).intersection(set(required_elements))
+            if len(intersection_set) != len(required_elements):
+                raise Exception("Not enough elements in fidelity positions csv")
 
-        return self.account_dict
+            for row in reader:
+                # Skip empty rows
+                if row["Account Number"] is None:
+                    continue
+                # Last couple of rows have some disclaimers, filter those out
+                if "and" in row["Account Number"]:
+                    break
+                # Skip accounts that start with 'Y' (Fidelity managed)
+                if row["Account Number"][0] == "Y":
+                    continue
+                # Get the value and remove '$' from it
+                val = str(row["Current Value"]).replace("$", "").replace("-", "")
+                # Get the last price
+                last_price = str(row["Last Price"]).replace("$", "").replace("-", "")
+                # Get quantity
+                quantity = str(row["Quantity"]).replace("-", "")
+                # Get ticker
+                ticker = str(row["Symbol"])
+
+                # Don't include this if present
+                if "Pending" in ticker:
+                    continue
+                # If the value isn't present, move to next row
+                if len(val) == 0:
+                    continue
+                # If the last price isn't available, just use the current value
+                if len(last_price) == 0:
+                    last_price = val
+                # If the quantity is missing set it to 1 (For SPAXX or any other cash position)
+                if len(quantity) == 0:
+                    quantity = 1
+                
+                # Check for anything that isn't a number 
+                try:
+                    float(val)
+                except ValueError:
+                    val = 0
+                try:
+                    float(last_price)
+                except ValueError:
+                    last_price = 0
+                try:
+                    float(quantity)
+                except ValueError:
+                    quantity = 0
+
+                # Create list of dictionary for stock found
+                stock_list = [create_stock_dict(ticker, float(quantity), float(last_price), float(val))]
+                # Try setting in the account dict without overwrite
+                if not self.set_account_dict(
+                    account_num=row["Account Number"],
+                    balance=float(val),
+                    nickname=row["Account Name"],
+                    stocks=stock_list,
+                    overwrite=False,
+                ):
+                    # If the account exists already, add to it
+                    self.add_stock_to_account_dict(row["Account Number"], stock_list[0])
+
+            # Close the file
+            csv_file.close()
+            # Delete the file
+            os.remove(positions_csv)
+
+            return self.account_dict
+        except Exception as e:
+            print(f"Error in getAccountInfo: {e}")
+            return None
 
     def set_account_dict(self, account_num: str, balance: float = None, withdrawal_balance: float = None, nickname: str = None, stocks: list = None, overwrite: bool = False):
         """
