@@ -435,8 +435,8 @@ class FidelityAutomation:
 
             # Use the info given
             self.account_dict[account_num] = {
-                "balance": balance if balance is not None else 0.0,
-                "withdrawal_balance": withdrawal_balance if withdrawal_balance is not None else 0.0,
+                "balance": round(balance, 2) if balance is not None else 0.0,
+                "withdrawal_balance": round(withdrawal_balance, 2) if withdrawal_balance is not None else 0.0,
                 "nickname": nickname,
                 "stocks": stocks if stocks is not None else []
             }
@@ -461,10 +461,10 @@ class FidelityAutomation:
         if account_num in self.account_dict:
             if overwrite:
                 self.account_dict[account_num]["stocks"] = [stock]
-                self.account_dict[account_num]["balance"] = stock["value"]
+                self.account_dict[account_num]["balance"] = round(stock["value"], 2)
             else:
                 self.account_dict[account_num]["stocks"].append(stock)
-                self.account_dict[account_num]["balance"] += stock["value"]
+                self.account_dict[account_num]["balance"] += round(stock["value"], 2)
             return True
         return False
 
