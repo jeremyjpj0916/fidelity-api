@@ -263,20 +263,24 @@ class FidelityAutomation:
                     }
             }
             ```
+        None
+            If an error occured
         """
         try:
             # Go to positions page
             self.page.wait_for_load_state(state="load")
             self.page.goto("https://digital.fidelity.com/ftgw/digital/portfolio/positions")
+            
+            # This double wait is necessary. If you remove it, I'll kill you
             self.wait_for_loading_sign()
-            self.page.wait_for_timeout(200)
+            self.page.wait_for_timeout(1000)
             self.wait_for_loading_sign()
 
             # Download the positions as a csv #
             # See if new UI is present
             new_ui = True
             try:
-                self.page.get_by_role("button", name="Available Actions").click(timeout=5000)
+                self.page.get_by_role("button", name="Available Actions").click(timeout=2000)
                 with self.page.expect_download() as download_info:
                     self.page.get_by_role("menuitem", name="Download").click()
                 download = download_info.value
@@ -307,6 +311,7 @@ class FidelityAutomation:
                 "Description",
                 "Quantity",
                 "Last Price",
+                "Last Price Change",
                 "Current Value",
             ]
             intersection_set = set(reader.fieldnames).intersection(set(required_elements))
@@ -324,32 +329,34 @@ class FidelityAutomation:
                 if row["Account Number"][0] == "Y":
                     continue
                 # Get the value and remove '$' from it
-                val = str(row["Current Value"]).replace("$", "").replace("-", "")
+                cur_val = str(row["Current Value"]).replace("$", "").replace("-", "")
                 # Get the last price
                 last_price = str(row["Last Price"]).replace("$", "").replace("-", "")
+                # Get the last price change
+                last_price_change = str(row["Last Price Change"]).replace("$", "")
                 # Get quantity
                 quantity = str(row["Quantity"]).replace("-", "")
                 # Get ticker
                 ticker = str(row["Symbol"])
 
-                # Don't include this if present
+                # Catch any pending activity with special handling
                 if "Pending" in ticker:
-                    continue
+                    cur_val = last_price_change
                 # If the value isn't present, move to next row
-                if len(val) == 0:
+                if len(cur_val) == 0:
                     continue
                 # If the last price isn't available, just use the current value
                 if len(last_price) == 0:
-                    last_price = val
+                    last_price = cur_val
                 # If the quantity is missing set it to 1 (For SPAXX or any other cash position)
                 if len(quantity) == 0:
                     quantity = 1
                 
                 # Check for anything that isn't a number 
                 try:
-                    float(val)
+                    float(cur_val)
                 except ValueError:
-                    val = 0
+                    cur_val = 0
                 try:
                     float(last_price)
                 except ValueError:
@@ -360,11 +367,11 @@ class FidelityAutomation:
                     quantity = 0
 
                 # Create list of dictionary for stock found
-                stock_list = [create_stock_dict(ticker, float(quantity), float(last_price), float(val))]
+                stock_list = [create_stock_dict(ticker, float(quantity), float(last_price), float(cur_val))]
                 # Try setting in the account dict without overwrite
                 if not self.set_account_dict(
                     account_num=row["Account Number"],
-                    balance=float(val),
+                    balance=float(cur_val),
                     nickname=row["Account Name"],
                     stocks=stock_list,
                     overwrite=False,
@@ -1266,6 +1273,7 @@ class FidelityAutomation:
         signs = [self.page.locator("div:nth-child(2) > .loading-spinner-mask-after").first,
                  self.page.locator(".pvd-spinner__mask-inner").first,
                  self.page.locator("pvd-loading-spinner").first,
+                 self.page.locator(".pvd3-spinner-root > .pvd-spinner__spinner > .pvd-spinner__visual > div > .pvd-spinner__mask-inner").first,
                 ]
         for sign in signs:
             sign.wait_for(timeout=timeout, state="hidden")
