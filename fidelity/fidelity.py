@@ -223,6 +223,8 @@ class FidelityAutomation:
         -------
         all_stock_dict (dict)
             A dict of stocks that the account has.
+            The dict is keyed by stocks and only has the quantity. 
+            `all_stock_dict[stock] = quantity (int)`
         """
         if account_number in self.account_dict:
             all_stock_dict = {}
