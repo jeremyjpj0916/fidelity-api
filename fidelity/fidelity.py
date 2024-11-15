@@ -1015,7 +1015,6 @@ class FidelityAutomation:
                     # If new account is found, collect and return
                     if new_dict_acc not in old_dict:
                         self.new_account_number = new_dict_acc
-                        print(self.new_account_number)
                         return True
                 
                 # No new account number was found, return false
