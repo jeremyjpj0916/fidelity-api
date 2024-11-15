@@ -1291,6 +1291,11 @@ class FidelityAutomation:
             The account number for the account to be nicknamed. Ex: `Z12345678`
         nickname (str)
             The nickname to use
+            
+        Returns
+        -------
+        Success (bool)
+            True if successful, false otherwise
         """
         try:
             # Get to summary page
