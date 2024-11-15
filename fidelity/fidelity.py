@@ -255,7 +255,8 @@ class FidelityAutomation:
             ```
             {
                 'balance': float: Total account balance
-                'type': str: The account nickname or default name
+                'nickname': str: The account nickname or default name
+                "withdrawal_balance": Use get_list_of_accounts() to populate
                 'stocks': list: A list of dictionaries for each stock found. The dict has:
                     {
                         'ticker': str: The ticker of the stock held
@@ -266,7 +267,7 @@ class FidelityAutomation:
             }
             ```
         None
-            If an error occured
+            If an error occurred
         """
         try:
             # Go to positions page
