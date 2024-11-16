@@ -293,9 +293,10 @@ class FidelityAutomation:
                 try:
                     # Use the old UI
                     with self.page.expect_download() as download_info:
-                        self.page.get_by_label("Download Positions").click()
+                        self.page.get_by_label("Download Positions").click(timeout=2000)
                     download = download_info.value
                 except PlaywrightTimeoutError:
+                    print("Could not get positions csv")
                     return None
             # Get absolute path to file
             cur = os.getcwd()
@@ -764,10 +765,13 @@ class FidelityAutomation:
 
     def transaction(self, stock: str, quantity: float, action: str, account: str, dry: bool = True) -> bool:
         """
-        Process an order (transaction) using the dedicated trading page.
+        Process an order (transaction) using the dedicated trading page. Support extended hour trading.
 
         `NOTE`: If you use this function repeatedly but change the stock between ANY call,
-        RELOAD the page before calling this
+        RELOAD the page before calling this. You can do this like so:
+        ```
+        FidelityAutomation.page.reload()
+        ```
 
         For buying:
             If the price of the security is below $1, it will choose limit order and go off of the last price + a little
