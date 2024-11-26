@@ -283,7 +283,7 @@ class FidelityAutomation:
             # See if new UI is present
             new_ui = True
             try:
-                self.page.get_by_role("button", name="Available Actions").click(timeout=2000)
+                self.page.get_by_role("button", name="Available Actions").click(timeout=8000)
                 with self.page.expect_download() as download_info:
                     self.page.get_by_role("menuitem", name="Download").click()
                 download = download_info.value
@@ -293,7 +293,7 @@ class FidelityAutomation:
                 try:
                     # Use the old UI
                     with self.page.expect_download() as download_info:
-                        self.page.get_by_label("Download Positions").click(timeout=2000)
+                        self.page.get_by_label("Download Positions").click(timeout=8000)
                     download = download_info.value
                 except PlaywrightTimeoutError:
                     print("Could not get positions csv")
