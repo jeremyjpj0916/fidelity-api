@@ -998,8 +998,12 @@ class FidelityAutomation:
                     self.wait_for_loading_sign()
 
                 # If application is already started, then there will only be 1 "Next" button
-                self.page.get_by_role("button", name="Next").click()
-                self.wait_for_loading_sign()
+                # Rarely there will be no "Next" button
+                try:
+                    self.page.get_by_role("button", name="Next").click(timeout=15000)
+                    self.wait_for_loading_sign()
+                except:
+                    pass
                 
                 # Open account
                 self.page.get_by_role("button", name="Open account").click()
