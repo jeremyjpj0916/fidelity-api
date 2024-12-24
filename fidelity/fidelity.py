@@ -277,7 +277,8 @@ class FidelityAutomation:
             # This double wait is necessary. If you remove it, I'll kill you
             self.wait_for_loading_sign()
             self.page.wait_for_timeout(1000)
-            self.wait_for_loading_sign()
+            # Sometimes this can take a while to load. Set to 2.5 minutes
+            self.wait_for_loading_sign(timeout=2.5*60*1000)
 
             # Download the positions as a csv #
             # See if new UI is present
