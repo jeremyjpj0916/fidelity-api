@@ -764,7 +764,7 @@ class FidelityAutomation:
 
         return unique_stocks
 
-    def transaction(self, stock: str, quantity: float, action: str, account: str, dry: bool = True) -> bool:
+    def transaction(self, stock: str, quantity: float, action: str, account: str, dry: bool = True, limit_price: float = None) -> bool:
         """
         Process an order (transaction) using the dedicated trading page. Support extended hour trading.
 
@@ -791,6 +791,8 @@ class FidelityAutomation:
             The account number to trade under.
         dry (bool)
             True for dry (test) run, False for real run.
+        limit_price (float)
+            The limit price for buying or selling a security, ex: 3.14
 
         Returns
         -------
@@ -864,6 +866,10 @@ class FidelityAutomation:
                 else:
                     difference_price = 0.01 if float(last_price) > 0.1 else 0.0001
                     wanted_price = round(float(last_price) - difference_price, precision)
+
+                # Limit price override if we want to buy/sell at a specific price vs the above logic
+                if limit_price is not None:
+                    wanted_price = limit_price
 
                 # Click on the limit default option when in extended hours
                 self.page.query_selector("#dest-dropdownlist-button-ordertype > span:nth-child(1)").click()
@@ -949,6 +955,43 @@ class FidelityAutomation:
             return (False, f"Driver timed out. Order not complete: {toe}")
         except Exception as e:
             return (False, f"Some error occurred: {e}")
+
+    def batch_limit_sell(self, stock: str, total_shares: int, batch_size: int, limit_price: float, account: str, dry: bool = True):
+        """
+        Place multiple limit sell orders in batches.
+
+        :param stock: Stock ticker symbol (e.g., 'AAPL').
+        :param total_shares: Total number of shares to sell.
+        :param batch_size: Number of shares per batch.
+        :param limit_price: Limit price for the sell orders.
+        :param account: Fidelity account ID to use for transactions.
+        :return: List of transaction results.
+        """
+        num_batches = total_shares // batch_size
+        remaining_shares = total_shares % batch_size
+        results = []
+
+        # In the event this function gets called prior to a reload being performed from stock symbol switch, do now before batching a bunch of transctions for safety. 
+        self.page.reload()
+
+        for i in range(num_batches):
+            success, errormsg = self.fidelity.transaction(stock, batch_size, 'sell', account, dry, limit_price)
+            results.append((success, errormsg))
+            if success:
+                print(f"Batch {i+1}: Successfully placed limit sell for {batch_size} shares at {limit_price}")
+            else:
+                print(f"Batch {i+1}: Failed to place limit sell: {errormsg}")
+
+        # Handle remaining shares, if any
+        if remaining_shares > 0:
+            success, errormsg = self.fidelity.transaction(stock, remaining_shares, 'sell', account, dry, limit_price)
+            results.append((success, errormsg))
+            if success:
+                print(f"Final batch: Successfully placed limit sell for {remaining_shares} shares at {limit_price}")
+            else:
+                print(f"Final batch: Failed to place limit sell: {errormsg}")
+
+        return results
 
     def open_account(self, type: typing.Optional[Literal["roth", "brokerage"]]) -> bool:
         """
