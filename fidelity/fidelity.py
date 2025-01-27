@@ -956,7 +956,7 @@ class FidelityAutomation:
         except Exception as e:
             return (False, f"Some error occurred: {e}")
 
-    def batch_limit_sell(self, stock: str, total_shares: int, batch_size: int, limit_price: float, account: str, dry: bool = True):
+    def batch_limit_sell(self, stock: str, total_shares: float, batch_size: float, limit_price: float, account: str, dry: bool = True):
         """
         Place multiple limit sell orders in batches.
 
